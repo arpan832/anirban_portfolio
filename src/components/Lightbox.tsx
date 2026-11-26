@@ -57,8 +57,8 @@ export const Lightbox = ({
     if (!isOpen || !imageRef.current || prefersReducedMotion()) return
     const tween = gsap.fromTo(
       imageRef.current,
-      { autoAlpha: 0, scale: 1.015 },
-      { autoAlpha: 1, scale: 1, duration: 0.45, ease: 'power2.out' },
+      { autoAlpha: 0, y: 12 },
+      { autoAlpha: 1, y: 0, duration: 0.45, ease: 'power2.out' },
     )
     return () => {
       tween.kill()

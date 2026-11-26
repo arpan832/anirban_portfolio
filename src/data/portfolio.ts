@@ -5,6 +5,7 @@ import btsAfterMovieVideo from '../assets/_optimized-video/bts-after-movie.mp4'
 import btsAfterMoviePoster from '../assets/_optimized-video/bts-after-movie.webp'
 import btsStagePoster from '../assets/_optimized-video/bts-stage.webp'
 import btsWorkingPoster from '../assets/_optimized-video/bts-working.webp'
+import { mediaDimensions } from './media-dimensions'
 
 /**
  * Portfolio content model.
@@ -27,6 +28,9 @@ export type MediaItem = {
   /** Video source for cover items that play a silent loop. */
   videoSrc?: string
   poster?: string
+  /** Intrinsic size of the large derivative, for width/height attributes. */
+  width?: number
+  height?: number
 }
 
 export type PortfolioCategory = {
@@ -68,12 +72,15 @@ const sortKeys = (keys: string[]) => [...keys].sort((a, b) => a.localeCompare(b)
 const buildMedia = (key: string, alt: string): MediaItem => {
   const largeSrc = optimized[key]
   const smallSrc = optimizedSmall[smallKey(key)]
+  const size = mediaDimensions[key.replace('../assets/_optimized/', '')]
 
   return {
     src: largeSrc ?? '',
     srcSet:
       largeSrc && smallSrc ? `${smallSrc} 860w, ${largeSrc} 1800w` : undefined,
     alt,
+    width: size?.[0],
+    height: size?.[1],
   }
 }
 

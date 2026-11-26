@@ -1,29 +1,12 @@
 import { useState } from 'react'
-import type { CSSProperties } from 'react'
 import type { MediaItem } from '../data/portfolio'
 import { Icon } from './Icon'
 import { Lightbox } from './Lightbox'
 import { SmartImage } from './Media'
 
-/** A varied 12-column rhythm; the pattern repeats so long galleries stay calm. */
-const cellPattern = [
-  { span: 7, ratio: '3 / 2' },
-  { span: 5, ratio: '4 / 5' },
-  { span: 4, ratio: '4 / 5' },
-  { span: 4, ratio: '1 / 1' },
-  { span: 4, ratio: '4 / 5' },
-  { span: 6, ratio: '3 / 2' },
-  { span: 6, ratio: '4 / 5' },
-  { span: 5, ratio: '4 / 5' },
-  { span: 7, ratio: '3 / 2' },
-  { span: 4, ratio: '1 / 1' },
-  { span: 4, ratio: '3 / 4' },
-  { span: 4, ratio: '1 / 1' },
-]
-
 export const GalleryGrid = ({
   items,
-  sizes = '(min-width: 1200px) 44vw, (min-width: 700px) 46vw, 92vw',
+  sizes = '(min-width: 1200px) 32vw, (min-width: 700px) 46vw, 92vw',
   label = 'photograph',
 }: {
   items: MediaItem[]
@@ -36,19 +19,8 @@ export const GalleryGrid = ({
     <>
       <div className="gallery">
         {items.map((item, index) => {
-          const cell = cellPattern[index % cellPattern.length]
           return (
-            <figure
-              className="frame"
-              key={item.src}
-              data-frame
-              style={
-                {
-                  '--span': cell.span,
-                  '--ratio': cell.ratio,
-                } as CSSProperties
-              }
-            >
+            <figure className="frame" key={item.src} data-frame>
               <button
                 type="button"
                 className="frame-button"

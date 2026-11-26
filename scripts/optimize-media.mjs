@@ -11,7 +11,7 @@
  * (npm run media) to optimise new files. Requires ImageMagick (`convert`).
  */
 import { execFile } from 'node:child_process'
-import { mkdir, readdir, stat } from 'node:fs/promises'
+import { mkdir, readdir, stat, writeFile } from 'node:fs/promises'
 import { existsSync } from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -22,7 +22,7 @@ const variants = [
   { dir: '_optimized', longEdge: 1800, quality: 78 },
   { dir: '_optimized-small', longEdge: 860, quality: 72 },
 ]
-const skipDirs = new Set(['_optimized', '_optimized-small'])
+const skipDirs = new Set(['_optimized', '_optimized-small', '_optimized-video'])
 const imageExtensions = new Set(['.jpg', '.jpeg', '.png', '.webp'])
 
 const walk = async (dir) => {
@@ -94,6 +94,52 @@ const run = async () => {
 
   await Promise.all(Array.from({ length: 4 }, worker))
   console.log('Done.')
+
+  await writeDimensions()
+}
+
+/**
+ * Records the intrinsic size of every generated WebP so the app can emit
+ * width/height attributes and reserve space before an image loads.
+ */
+const writeDimensions = async () => {
+  const optimizedRoot = path.join(sourceRoot, '_optimized')
+  const files = await walk(optimizedRoot)
+  const entries = []
+
+  for (const file of files) {
+    if (path.extname(file).toLowerCase() !== '.webp') continue
+    const size = await new Promise((resolve, reject) => {
+      execFile('identify', ['-format', '%w %h', file], (error, stdout) => {
+        if (error) reject(error)
+        else {
+          const [width, height] = stdout.trim().split(/\s+/).map(Number)
+          resolve({ width, height })
+        }
+      })
+    })
+    const key = path.relative(optimizedRoot, file).split(path.sep).join('/')
+    entries.push([key, size.width, size.height])
+  }
+
+  entries.sort(([a], [b]) => a.localeCompare(b))
+
+  const body = [
+    '/**',
+    ' * Intrinsic dimensions of the generated WebP derivatives.',
+    ' * Written by scripts/optimize-media.mjs (npm run media) — do not edit by hand.',
+    ' * Used for width/height attributes so galleries reserve space before loading.',
+    ' */',
+    'export const mediaDimensions: Record<string, [number, number]> = {',
+    ...entries.map(
+      ([key, width, height]) => `  ${JSON.stringify(key)}: [${width}, ${height}],`,
+    ),
+    '}',
+    '',
+  ].join('\n')
+
+  await writeFile(path.join(root, 'src/data/media-dimensions.ts'), body)
+  console.log(`Wrote dimensions for ${entries.length} images.`)
 }
 
 run().catch((error) => {

@@ -127,6 +127,9 @@ export const usePageReveals = (rootRef: RefObject<HTMLElement | null>, key: stri
               stagger: 0.07,
               ease: EASE,
               overwrite: true,
+              /* Leave no transform behind: it keeps column fragments from
+                 splitting in WebKit once the reveal has finished. */
+              onComplete: () => gsap.set(batch, { clearProps: 'transform' }),
             }),
         })
       }
