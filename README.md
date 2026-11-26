@@ -15,7 +15,9 @@ quiet interface text. Photographs lead; motion supports them.
 - **About** — the biography as an editorial block with a drop cap, portrait and
   a quiet pulled quote.
 - **Bodies of work** — five full-bleed covers (concerts, model photoshoot,
-  photographs, wedding, product shoot), each opening its own page.
+  photographs, wedding, product shoot), each opening its own page. Galleries are
+  untitled masonry columns with one gutter everywhere, so no frame is cropped and
+  the rhythm stays clean.
 - **Between the frames** — behind-the-scenes films that load and play only when
   visible, with a play/pause control and silence by design.
 - **Contact** — a single, obvious invitation, plus the Instagram handle. There is
@@ -37,6 +39,7 @@ src/
   index.css               design tokens, reset, typography, shared utilities
   App.css                 page and component composition
   data/portfolio.ts       galleries, categories, copy — the content source
+  data/media-dimensions.ts  generated intrinsic sizes (width/height attributes)
   lib/                    gsap setup, scroll helpers, reveal system, router
   components/             nav, hero, sections, gallery, lightbox, footer
 scripts/optimize-media.mjs  generates web derivatives of the photographs
@@ -72,9 +75,11 @@ proper display names from the `artistNames` map.
 
 1. Drop the new files into the relevant folder under `src/assets/` (keep the
    existing folder spelling, including `CONCERT MOMENT` and `weeding-cover`).
-2. Run `npm run media` to generate optimised derivatives. This needs
-   [ImageMagick](https://imagemagick.org/) (`convert`) on your machine.
-3. That's it — the image appears in its gallery, sorted by path.
+2. Run `npm run media` to generate optimised derivatives and refresh
+   `src/data/media-dimensions.ts`. This needs [ImageMagick](https://imagemagick.org/)
+   (`convert` and `identify`) on your machine.
+3. That's it — the image appears in its gallery, sorted by path. The recorded
+   dimensions reserve space before lazy images load, so the masonry never jumps.
 
 New galleries appear on the site only through `categories` in
 `src/data/portfolio.ts`, so a new body of work stays a deliberate editorial
@@ -139,7 +144,8 @@ rewrite rule on other static hosts.
 - Videos are muted, `playsInline` and never autoplay sound.
 - The full-screen viewer uses the native dialog element for focus trapping and
   `Escape`; arrow keys step through frames and focus returns to the photograph
-  that opened it.
+  that opened it. Images are contained inside the stage, so the whole frame is
+  always visible — no crop on open or while stepping.
 - Semantic headings, landmarks, a skip link, visible focus states and descriptive
   alt text are in place; muted text colours meet WCAG AA contrast.
 - Section links account for the fixed navigation bar with `scroll-margin-top`
@@ -149,7 +155,7 @@ rewrite rule on other static hosts.
 
 The production build is about 30 MB in total (down from 84 MB before the films
 were transcoded): roughly 15 MB of video, 15 MB of WebP across both responsive
-sizes, and one CSS and one JS bundle (about 39 kB / 8.4 kB gzipped and 415 kB /
-134 kB gzipped). Videos stream with `preload="metadata"`, posters paint first,
+sizes, and one CSS and one JS bundle (about 39 kB / 8.4 kB gzipped and 421 kB /
+135 kB gzipped). Videos stream with `preload="metadata"`, posters paint first,
 and only the players near the viewport ever receive a `src`. Phones and
 reduced-motion visitors get a responsive still instead of the cover film.
