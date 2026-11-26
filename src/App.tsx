@@ -1,575 +1,246 @@
-import { useEffect, useRef, useState } from 'react'
-import type { ReactNode } from 'react'
-import gsap from 'gsap'
-import { ScrollTrigger } from 'gsap/ScrollTrigger'
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import Lenis from 'lenis'
-import heroImage from './assets/Hero.jpg'
-import aboutImage from './assets/ABOUTME/me.jpg'
-import concertCover from './assets/COVER_PICTURES/concert-cover/T.R.A.P.jpg'
-import concertCoverVideo from './assets/COVER_PICTURES/concert-cover-video.mp4'
-import modelCover from './assets/COVER_PICTURES/modelpictures-cover/IMG_5332 (1).jpg'
-import photographCover from './assets/COVER_PICTURES/photograph-cover/IMG_0165.jpg'
-import productCover from './assets/COVER_PICTURES/Product-cover/1779813968611.jpg'
-import weddingCover from './assets/COVER_PICTURES/weeding-cover/weeding.jpg'
-import previewOne from './assets/PREVIEWS/preview01.jpg'
-import previewTwo from './assets/PREVIEWS/preview02.jpg'
-import previewThree from './assets/PREVIEWS/preview03.jpg'
 import './App.css'
+import { findCategory } from './data/portfolio'
+import {
+  EASE_IN_OUT,
+  gsap,
+  prefersReducedMotion,
+  ScrollTrigger,
+} from './lib/gsap'
+import { usePageReveals } from './lib/motion'
+import { RouterProvider } from './lib/RouterProvider'
+import { readPath } from './lib/router'
+import {
+  getSmoothScroll,
+  scrollToSection,
+  scrollToTop,
+  setSmoothScroll,
+} from './lib/scroll'
+import { AboutSection } from './components/AboutSection'
+import { BtsSection } from './components/BtsSection'
+import { CategoryPage, NotFoundPage } from './components/CategoryPage'
+import { ContactSection } from './components/ContactSection'
+import { Hero } from './components/Hero'
+import { IntroCurtain } from './components/IntroCurtain'
+import { PreviewStrip, Ticker } from './components/PreviewStrip'
+import { ScrollProgress } from './components/ScrollProgress'
+import { SiteFooter } from './components/SiteFooter'
+import { SiteNav } from './components/SiteNav'
+import { WorkIndex } from './components/WorkIndex'
 
-gsap.registerPlugin(ScrollTrigger)
+const INTRO_KEY = 'anirban-creates:intro'
 
-const currentYear = new Date().getFullYear()
-
-type MediaItem = {
-  src: string
-  alt: string
-  kind?: 'image' | 'video'
-  poster?: string
-}
-
-type PortfolioCategory = {
-  id: string
-  path: string
-  title: string
-  eyebrow: string
-  cover: MediaItem
-  items: MediaItem[]
-}
-
-type ArtistGallery = {
-  id: string
-  name: string
-  items: MediaItem[]
-}
-
-const concertImageModules = import.meta.glob<string>(
-  './assets/CONCERT MOMENT/CONCERT MOMENT/**/*.{jpg,JPG,jpeg,png,webp}',
-  { eager: true, query: '?url', import: 'default' },
-) 
-const modelImageModules = import.meta.glob<string>(
-  './assets/MODEL PHOTOSHOOT/MODEL PHOTOSHOOT/**/*.{jpg,JPG,jpeg,png,webp}',
-  { eager: true, query: '?url', import: 'default' },
-)
-const photographImageModules = import.meta.glob<string>(
-  './assets/PHOTOGRAPHS/PHOTOGRAPHS/**/*.{jpg,JPG,jpeg,png,webp}',
-  { eager: true, query: '?url', import: 'default' },
-)
-const productImageModules = import.meta.glob<string>(
-  './assets/PRODUCT SHOOT/PRODUCT SHOOT/**/*.{jpg,JPG,jpeg,png,webp}',
-  { eager: true, query: '?url', import: 'default' },
-)
-const weddingImageModules = import.meta.glob<string>(
-  './assets/WEDDING/WEDDING/**/*.{jpg,JPG,jpeg,png,webp}',
-  { eager: true, query: '?url', import: 'default' },
-)
-const btsVideoModules = import.meta.glob<string>(
-  './assets/BTS/**/*.{mp4,MP4,webm,mov}',
-  { eager: true, query: '?url', import: 'default' },
-)
-
-const fileLabel = (path: string) => {
-  const filename = path.split('/').pop()?.replace(/\.[^.]+$/, '') ?? 'photograph'
-  return filename.replace(/[_-]+/g, ' ')
-}
-
-const modulesToMedia = (
-  modules: Record<string, string>,
-  subject: string,
-): MediaItem[] =>
-  Object.entries(modules)
-    .sort(([left], [right]) => left.localeCompare(right))
-    .map(([path, src]) => ({
-      src,
-      alt: `${subject} photograph - ${fileLabel(path)}`,
-    }))
-
-const concertArtists = (): ArtistGallery[] => {
-  const groups = new Map<string, MediaItem[]>()
-
-  Object.entries(concertImageModules)
-    .sort(([left], [right]) => left.localeCompare(right))
-    .forEach(([path, src]) => {
-      const segments = path.split('/')
-      const artist = segments[4] ?? 'Concert moments'
-      const items = groups.get(artist) ?? []
-      items.push({
-        src,
-        alt: `${artist} concert photograph - ${fileLabel(path)}`,
-      })
-      groups.set(artist, items)
-    })
-
-  return Array.from(groups, ([name, items]) => ({
-    id: name.toLowerCase().replace(/[^a-z0-9]+/g, '-'),
-    name,
-    items,
-  }))
-}
-
-const categories: PortfolioCategory[] = [
-  {
-    id: 'concerts',
-    path: '/work/concerts',
-    title: 'Concerts',
-    eyebrow: 'Live energy',
-    cover: {
-      src: concertCoverVideo,
-      alt: 'Concert performance photographed by Anirban',
-      kind: 'video',
-      poster: concertCover,
-    },
-    items: modulesToMedia(concertImageModules, 'Concert'),
-  },
-  {
-    id: 'model-photoshoot',
-    path: '/work/model-photoshoot',
-    title: 'Model Photoshoot',
-    eyebrow: 'Portrait and fashion',
-    cover: { src: modelCover, alt: 'Model photoshoot portrait' },
-    items: modulesToMedia(modelImageModules, 'Model photoshoot'),
-  },
-  {
-    id: 'photographs',
-    path: '/work/photographs',
-    title: 'Photographs',
-    eyebrow: 'Everyday poetry',
-    cover: { src: photographCover, alt: 'Editorial photograph' },
-    items: modulesToMedia(photographImageModules, 'Photography'),
-  },
-  {
-    id: 'wedding',
-    path: '/work/wedding',
-    title: 'Wedding',
-    eyebrow: 'Meaningful moments',
-    cover: { src: weddingCover, alt: 'Wedding celebration photograph' },
-    items: modulesToMedia(weddingImageModules, 'Wedding'),
-  },
-  {
-    id: 'product-shoot',
-    path: '/work/product-shoot',
-    title: 'Product Shoot',
-    eyebrow: 'Details in focus',
-    cover: { src: productCover, alt: 'Product photographed in studio light' },
-    items: modulesToMedia(productImageModules, 'Product shoot'),
-  },
-]
-
-const btsVideos = Object.entries(btsVideoModules)
-  .sort(([left], [right]) => left.localeCompare(right))
-  .map(([path, src]) => ({
-    src,
-    alt: `Behind the scenes video - ${fileLabel(path)}`,
-  }))
-
-const previews: MediaItem[] = [
-  { src: previewOne, alt: 'Selected work preview one' },
-  { src: previewTwo, alt: 'Selected work preview two' },
-  { src: previewThree, alt: 'Selected work preview three' },
-]
-
-const currentPath = () => {
-  const path = window.location.pathname.replace(/\/+$/, '')
-  return path || '/'
-}
-
-function InternalLink({
-  href,
-  onNavigate,
-  children,
-  className,
-}: {
-  href: string
-  onNavigate: (path: string) => void
-  children: ReactNode
-  className?: string
-}) {
-  const handleClick = (event: React.MouseEvent<HTMLAnchorElement>) => {
-    if (
-      event.button !== 0 ||
-      event.metaKey ||
-      event.ctrlKey ||
-      event.shiftKey ||
-      event.altKey
-    ) {
-      return
-    }
-
-    event.preventDefault()
-    onNavigate(href)
+const shouldShowIntro = () => {
+  if (readPath() !== '/') return false
+  if (prefersReducedMotion()) return false
+  try {
+    return window.sessionStorage.getItem(INTRO_KEY) !== 'seen'
+  } catch {
+    return false
   }
-
-  return <a className={className} href={href} onClick={handleClick}>{children}</a>
 }
 
-function MediaImage({ item, className = '' }: { item: MediaItem; className?: string }) {
-  return (
-    <img
-      src={item.src}
-      alt={item.alt}
-      className={className}
-      loading="lazy"
-      decoding="async"
-    />
-  )
+const pageTitle = (route: string) => {
+  const category = findCategory(route)
+  if (category) return `${category.title} — Anirban Creates`
+  if (route !== '/') return 'Not found — Anirban Creates'
+  return 'Anirban Creates — Photography'
 }
 
-function SmartVideo({
-  src,
-  poster,
-  alt,
-  className = '',
-  preload = 'none',
-}: {
-  src: string
-  poster?: string
-  alt: string
-  className?: string
-  preload?: 'none' | 'metadata' | 'auto'
-}) {
-  const videoRef = useRef<HTMLVideoElement>(null)
-
-  useEffect(() => {
-    const video = videoRef.current
-    if (!video) return
-
-    const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches
-    if (reducedMotion) {
-      video.pause()
-      return
-    }
-
-    const observer = new IntersectionObserver(
-      ([entry]) => {
-        if (entry.isIntersecting) {
-          void video.play().catch(() => undefined)
-        } else {
-          video.pause()
-        }
-      },
-      { rootMargin: '180px 0px', threshold: 0.12 },
-    )
-
-    observer.observe(video)
-    return () => {
-      observer.disconnect()
-      video.pause()
-    }
-  }, [])
-
-  return (
-    <video
-      ref={videoRef}
-      className={className}
-      muted
-      loop
-      playsInline
-      preload={preload}
-      poster={poster}
-      aria-label={alt}
-    >
-      <source src={src} type="video/mp4" />
-    </video>
-  )
-}
-
-function CoverMedia({ item, className = '' }: { item: MediaItem; className?: string }) {
-  if (item.kind === 'video') {
-    return <SmartVideo src={item.src} poster={item.poster} alt={item.alt} className={className} preload="metadata" />
-  }
-
-  return <MediaImage item={item} className={className} />
-}
-
-function PortfolioCategorySection({
-  category,
-  onNavigate,
-}: {
-  category: PortfolioCategory
-  onNavigate: (path: string) => void
-}) {
-  return (
-    <section id={category.id} className="portfolio-section category-section">
-      <div className="section-heading" data-reveal>
-        <p className="eyebrow">{category.eyebrow}</p>
-        <h2>{category.title}</h2>
-        <span className="section-count">{String(category.items.length).padStart(2, '0')} frames</span>
-      </div>
-
-      <InternalLink href={category.path} onNavigate={onNavigate} className="category-cover-link">
-        <div className="category-cover" data-reveal>
-          <CoverMedia item={category.cover} className="cover-media" />
-          <div className="cover-caption">
-            <span>{category.title}</span>
-            <span>Explore the story ↓</span>
-          </div>
-        </div>
-      </InternalLink>
-
-    </section>
-  )
-}
-
-function CategoryPage({
-  category,
-  onNavigate,
-}: {
-  category: PortfolioCategory
-  onNavigate: (path: string) => void
-}) {
-  const categoryIndex = categories.findIndex((item) => item.id === category.id)
-  const nextCategory = categories[(categoryIndex + 1) % categories.length]
-
-  return (
-    <main className="category-page">
-      <section className="category-page-hero">
-        <InternalLink href="/" onNavigate={onNavigate} className="back-link">
-          ← Back to the archive
-        </InternalLink>
-        <p className="eyebrow">{category.eyebrow}</p>
-        <h1>{category.title}</h1>
-        <p className="category-page-intro">
-          A collection of frames shaped by light, movement, and the atmosphere of the moment.
-        </p>
-      </section>
-
-      <section className="category-page-media">
-        <div className="category-page-cover">
-          <CoverMedia item={category.cover} className="cover-media" />
-        </div>
-        {category.id === 'concerts' ? (
-          <div className="artist-list category-page-artists">
-            {concertArtists().map((artist) => (
-              <article key={artist.id} className="artist-group" id={artist.id}>
-                <div className="artist-heading">
-                  <h2>{artist.name}</h2>
-                  <span>{String(artist.items.length).padStart(2, '0')} frames</span>
-                </div>
-                <div className="artist-grid">
-                  {artist.items.map((item) => <MediaImage key={item.src} item={item} />)}
-                </div>
-              </article>
-            ))}
-          </div>
-        ) : (
-          <div className="gallery-grid category-page-grid">
-            {category.items.map((item) => <MediaImage key={item.src} item={item} />)}
-          </div>
-        )}
-      </section>
-
-      <nav className="category-page-next" aria-label="Portfolio page navigation">
-        <span>Next story</span>
-        <InternalLink href={nextCategory.path} onNavigate={onNavigate}>
-          {nextCategory.title} <span>↗</span>
-        </InternalLink>
-      </nav>
-    </main>
-  )
-}
-
-function NotFoundPage({ onNavigate }: { onNavigate: (path: string) => void }) {
-  return (
-    <main className="category-page not-found-page">
-      <p className="eyebrow">404 / Not found</p>
-      <h1>This frame is<br />not in the archive.</h1>
-      <InternalLink href="/" onNavigate={onNavigate} className="back-link">
-        ← Return home
-      </InternalLink>
-    </main>
-  )
-}
+const HomePage = ({ heroReady }: { heroReady: boolean }) => (
+  <main id="main">
+    <Hero ready={heroReady} />
+    <PreviewStrip />
+    <Ticker />
+    <AboutSection />
+    <WorkIndex />
+    <BtsSection />
+    <ContactSection />
+  </main>
+)
 
 function App() {
-  const pageRef = useRef<HTMLDivElement>(null)
-  const [route, setRoute] = useState(currentPath)
-  const activeCategory = categories.find((category) => category.path === route)
+  const shellRef = useRef<HTMLDivElement>(null)
+  const veilRef = useRef<HTMLDivElement>(null)
+  const pendingSection = useRef<string | null>(null)
+  const transitioning = useRef(false)
+  const [route, setRoute] = useState(readPath)
+  const [introActive, setIntroActive] = useState(shouldShowIntro)
+  const [heroReady, setHeroReady] = useState(() => !shouldShowIntro())
 
-  const navigate = (path: string) => {
-    if (path === currentPath()) return
-    window.history.pushState({}, '', path)
-    setRoute(path)
-    window.scrollTo({ top: 0, left: 0, behavior: 'auto' })
-  }
+  usePageReveals(shellRef, route)
 
+  /* Smooth scrolling — rebuilt for each page, cleaned up on the way out. */
   useEffect(() => {
-    const handlePopState = () => setRoute(currentPath())
-    window.addEventListener('popstate', handlePopState)
-    return () => window.removeEventListener('popstate', handlePopState)
-  }, [])
-
-  useEffect(() => {
-    const page = pageRef.current
-    if (!page) return
-
-    const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches
-    if (prefersReducedMotion) return
+    if (prefersReducedMotion()) return
 
     const lenis = new Lenis({
       autoRaf: false,
-      lerp: 0.08,
+      lerp: 0.09,
+      wheelMultiplier: 1,
+      touchMultiplier: 1.4,
     })
-    const context = gsap.context(() => {
-      gsap.fromTo(
-        '[data-hero-image]',
-        { scale: 0.82, clipPath: 'inset(9% 11% 9% 11%)' },
-        {
-          scale: 1,
-          clipPath: 'inset(0% 0% 0% 0%)',
-          ease: 'none',
-          scrollTrigger: {
-            trigger: '[data-hero]',
-            start: 'top top',
-            end: 'bottom top',
-            scrub: true,
-          },
-        },
-      )
+    setSmoothScroll(lenis)
 
-      gsap.utils.toArray<HTMLElement>('[data-reveal]').forEach((element) => {
-        gsap.fromTo(
-          element,
-          { autoAlpha: 0, y: 36 },
-          {
-            autoAlpha: 1,
-            y: 0,
-            duration: 0.9,
-            ease: 'power3.out',
-            scrollTrigger: {
-              trigger: element,
-              start: 'top 84%',
-              once: true,
-            },
-          },
-        )
-      })
+    const update = () => ScrollTrigger.update()
+    const raf = (time: number) => lenis.raf(time * 1000)
 
-      gsap.utils.toArray<HTMLElement>('[data-parallax]').forEach((element) => {
-        gsap.to(element, {
-          yPercent: -10,
-          ease: 'none',
-          scrollTrigger: {
-            trigger: element,
-            scrub: true,
-          },
-        })
-      })
-    }, page)
-
-    const updateLenis = (time: number) => {
-      lenis.raf(time * 1000)
-    }
-    const updateScrollTrigger = () => ScrollTrigger.update()
-
-    lenis.on('scroll', updateScrollTrigger)
-    gsap.ticker.add(updateLenis)
+    lenis.on('scroll', update)
+    gsap.ticker.add(raf)
     gsap.ticker.lagSmoothing(0)
+    ScrollTrigger.refresh()
 
     return () => {
-      context.revert()
-      lenis.off('scroll', updateScrollTrigger)
-      gsap.ticker.remove(updateLenis)
+      gsap.ticker.remove(raf)
+      lenis.off('scroll', update)
       lenis.destroy()
+      setSmoothScroll(null)
     }
   }, [route])
 
+  /* Lock the page while the opening titles are on screen. */
+  useEffect(() => {
+    const lenis = getSmoothScroll()
+    if (introActive) {
+      lenis?.stop()
+      document.body.style.overflow = 'hidden'
+    } else {
+      lenis?.start()
+      document.body.style.overflow = ''
+    }
+    return () => {
+      document.body.style.overflow = ''
+    }
+  }, [introActive, route])
+
+  /* New page: start at the top, refresh measurements, update the title. */
+  useLayoutEffect(() => {
+    window.history.scrollRestoration = 'manual'
+    window.scrollTo({ top: 0, left: 0, behavior: 'auto' })
+    scrollToTop()
+    document.title = pageTitle(route)
+    const timer = window.setTimeout(() => ScrollTrigger.refresh(), 60)
+    return () => window.clearTimeout(timer)
+  }, [route])
+
+  /* A deep link like /#about should land on that section once painted. */
+  useEffect(() => {
+    if (introActive || route !== '/') return
+    const id = window.location.hash.slice(1)
+    if (!id) return
+    const timer = window.setTimeout(() => {
+      scrollToSection(id)
+      ScrollTrigger.refresh()
+    }, 420)
+    return () => window.clearTimeout(timer)
+  }, [introActive, route])
+
+  useEffect(() => {
+    const onPopState = () => setRoute(readPath())
+    window.addEventListener('popstate', onPopState)
+    return () => window.removeEventListener('popstate', onPopState)
+  }, [])
+
+  /* If a nav link asked for a section on the next page, honour it after paint. */
+  useEffect(() => {
+    const section = pendingSection.current
+    if (!section) return
+    pendingSection.current = null
+    if (route !== '/') return
+
+    const timer = window.setTimeout(() => {
+      scrollToSection(section)
+      ScrollTrigger.refresh()
+    }, 420)
+    return () => window.clearTimeout(timer)
+  }, [route])
+
+  const navigate = useCallback((path: string, options?: { section?: string }) => {
+    const current = readPath()
+    if (path === current) {
+      if (options?.section) scrollToSection(options.section)
+      return
+    }
+
+    pendingSection.current = options?.section ?? null
+    const commit = () => {
+      window.history.pushState({}, '', path)
+      setRoute(path)
+    }
+
+    const veil = veilRef.current
+    if (!veil || prefersReducedMotion()) {
+      commit()
+      return
+    }
+
+    if (transitioning.current) return
+    transitioning.current = true
+
+    gsap
+      .timeline({
+        onComplete: () => {
+          transitioning.current = false
+        },
+      })
+      .set(veil, { pointerEvents: 'auto' })
+      .to(veil, { autoAlpha: 1, duration: 0.32, ease: EASE_IN_OUT })
+      .call(commit)
+      .to(veil, { autoAlpha: 0, duration: 0.62, ease: 'power2.out' }, 0.1)
+      .set(veil, { pointerEvents: 'none' })
+  }, [])
+
+  const handleIntroReveal = useCallback(() => {
+    setHeroReady(true)
+    ScrollTrigger.refresh()
+  }, [])
+
+  const handleIntroDone = useCallback(() => {
+    try {
+      window.sessionStorage.setItem(INTRO_KEY, 'seen')
+    } catch {
+      /* private mode — the intro simply plays again next time */
+    }
+    setIntroActive(false)
+    setHeroReady(true)
+    ScrollTrigger.refresh()
+  }, [])
+
+  const activeCategory = findCategory(route)
+  const isHome = route === '/'
+  const isKnown = isHome || Boolean(activeCategory)
+
   return (
-    <div ref={pageRef} className="site-shell">
-      <header className="site-nav">
-        <InternalLink href="/" onNavigate={navigate} className="wordmark">
-          Anirban Creates
-        </InternalLink>
-        <nav aria-label="Primary navigation">
-          {route === '/' ? <a href="#work">Work</a> : <InternalLink href="/" onNavigate={navigate}>Work</InternalLink>}
-          {route === '/' ? <a href="#about">About</a> : <InternalLink href="/" onNavigate={navigate}>About</InternalLink>}
-          {route === '/' ? <a href="#contact">Contact</a> : <InternalLink href="/" onNavigate={navigate}>Contact</InternalLink>}
-        </nav>
-      </header>
+    <RouterProvider value={{ route, navigate }}>
+      <div className="grain" aria-hidden="true" />
+      <a className="skip-link" href="#main">
+        Skip to content
+      </a>
 
-      {route === '/' ? <main id="top">
-        <section className="hero-section" data-hero>
-          <div className="hero-copy" data-reveal>
-            <p className="eyebrow">Photography / Kolkata, India</p>
-            <h1>Every moment<br />has a story.</h1>
-            <p className="hero-intro">
-              Thoughtful photographs of people, places, energy, and the quiet details in between.
-            </p>
-            <a className="text-link" href="#work">Enter the archive <span>↓</span></a>
-          </div>
-          <div className="hero-image-wrap">
-            <img data-hero-image src={heroImage} alt="Anirban's featured photography" />
-          </div>
-          <div className="hero-meta">
-            <span>01 / 07</span>
-            <span>Scroll to explore</span>
-          </div>
-        </section>
+      <ScrollProgress />
+      <SiteNav />
 
-        <section className="portfolio-section preview-section" id="work">
-          <div className="section-heading" data-reveal>
-            <p className="eyebrow">A selection</p>
-            <h2>Images with<br />an atmosphere.</h2>
-          </div>
-          <div className="preview-grid">
-            {previews.map((item, index) => (
-              <figure key={item.src} className={`preview-card preview-card-${index + 1}`} data-reveal>
-                <div className="preview-image-wrap" data-parallax>
-                  <MediaImage item={item} className="preview-image" />
-                </div>
-                <figcaption>0{index + 1} / selected frame</figcaption>
-              </figure>
-            ))}
-          </div>
-        </section>
+      <div className="site-shell" ref={shellRef}>
+        {introActive ? (
+          <IntroCurtain onReveal={handleIntroReveal} onDone={handleIntroDone} />
+        ) : null}
 
-        <section className="portfolio-section about-section" id="about">
-          <div className="about-image-wrap" data-reveal>
-            <MediaImage item={{ src: aboutImage, alt: 'Portrait of Anirban' }} />
-          </div>
-          <div className="about-copy" data-reveal>
-            <p className="eyebrow">About Anirban</p>
-            <h2>Light, presence,<br />and perspective.</h2>
-            <p>
-              Hi, I'm Anirban, a freelance photographer passionate about capturing people,
-              emotions and meaningful moments through my lens.
-            </p>
-            <p>
-              I specialise in portrait, fashion, wedding, event, concert and product photography,
-              creating images that capture the atmosphere, personality and details of every subject.
-            </p>
-            <p className="about-signoff">Every moment has a story. I'm here to capture it.</p>
-          </div>
-        </section>
+        {isHome ? (
+          <HomePage heroReady={heroReady} />
+        ) : activeCategory ? (
+          <CategoryPage category={activeCategory} />
+        ) : isKnown ? null : (
+          <NotFoundPage />
+        )}
 
-        {categories.map((category) => (
-          <PortfolioCategorySection key={category.id} category={category} onNavigate={navigate} />
-        ))}
+        <SiteFooter />
+      </div>
 
-        <section className="portfolio-section bts-section">
-          <div className="section-heading" data-reveal>
-            <p className="eyebrow">Behind the scenes</p>
-            <h2>Between<br />the frames.</h2>
-          </div>
-          <div className="bts-grid">
-            {btsVideos.map((video) => (
-              <SmartVideo key={video.src} src={video.src} alt={video.alt} className="bts-video" />
-            ))}
-          </div>
-        </section>
-
-        <section className="contact-section" id="contact" data-reveal>
-          <p className="eyebrow">Let's make something meaningful</p>
-          <h2>Have a story<br />to tell?</h2>
-          <a className="contact-link" href="https://www.instagram.com/anirban.creats/" target="_blank" rel="noreferrer">
-            Connect on Instagram <span>↗</span>
-          </a>
-        </section>
-      </main> : activeCategory ? <CategoryPage category={activeCategory} onNavigate={navigate} /> : <NotFoundPage onNavigate={navigate} />}
-
-      <footer className="site-footer">
-        <span>© {currentYear} Anirban Creates</span>
-        <span>Photography with intent.</span>
-      </footer>
-    </div>
+      <div className="route-veil" ref={veilRef} aria-hidden="true">
+        <span>Anirban Creates</span>
+      </div>
+    </RouterProvider>
   )
 }
 
